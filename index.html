@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Detetive</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --muted:#a9b1c7;
+      --text:#eef2ff;
+      --line:rgba(255,255,255,.12);
+
+      --possible:#60a5fa; /* azul */
+      --suspect:#fbbf24;  /* amarelo */
+      --no:#fb7185;       /* vermelho */
+      --have:#34d399;     /* verde */
+
+      --radius:16px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background-color: #000;
+      color:var(--text);
+    }
+
+    header{
+      padding:24px 16px 8px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    h1{
+      margin:0 0 8px;
+      font-size:clamp(20px, 2.4vw, 30px);
+      letter-spacing:.3px;
+    }
+    p.sub{
+      margin:0;
+      color:var(--muted);
+      line-height:1.5;
+      font-size:14px;
+    }
+    .autosave{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:rgba(255,255,255,.18);
+      display:inline-block;
+    }
+    .dot.on{ background: var(--have); }
+
+    main{
+      max-width:1100px;
+      margin:0 auto;
+      padding:16px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    .card-head{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .card-head h2{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.2px;
+    }
+    .card-head .small{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+    thead th{
+      text-align:left;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+      padding:10px 14px;
+      border-bottom:1px solid var(--line);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      white-space:nowrap;
+    }
+    tbody td{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      vertical-align:middle;
+    }
+    tbody tr:last-child td{ border-bottom: none; }
+
+    .item{
+      font-weight:650;
+      letter-spacing:.2px;
+      font-size:12px;
+    }
+    .muted{
+      color:var(--muted);
+      font-weight:500;
+      font-size:12px;
+      display:block;
+      margin-top:2px;
+    }
+
+    /* =========================
+       SELECT (compacto + legível)
+       ========================= */
+
+    /* “card do select”: só ele muda de cor */
+    .mark-cell{
+      padding:8px 10px !important; /* menor (tira o grandão) */
+    }
+    .mark-card{
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      padding: 8px 10px;           /* compacto */
+      transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .select-wrap{
+      position:relative;
+      width:100%;
+    }
+    .select-wrap::after{
+      content:"▾";
+      position:absolute;
+      right:10px;
+      top:50%;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,.85);
+      pointer-events:none;
+      font-size:12px;
+    }
+
+    .status-select{
+      width:100%;
+      padding:8px 30px 8px 10px;   /* compacto + espaço pra seta */
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(18,26,51,.72); /* fundo escuro (melhor leitura no PC) */
+      color: var(--text);
+      font-weight:700;
+      font-size:14px;              /* melhor leitura desktop */
+      line-height:1.2;
+      outline:none;
+      cursor:pointer;
+      transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+    }
+
+    /* Dropdown legível (Chrome/Edge/Firefox ok; Safari pode variar) */
+    .status-select option{
+      background: var(--card);
+      color: var(--text);
+    }
+
+    /* =========================
+       CORES (apenas no mark-card + select)
+       ========================= */
+
+    tr[data-status="possible"] .mark-card{
+      background: rgba(96,165,250,.12);
+      border-color: rgba(96,165,250,.22);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.16);
+    }
+    tr[data-status="suspect"] .mark-card{
+      background: rgba(251,191,36,.12);
+      border-color: rgba(251,191,36,.22);
+      box-shadow: inset 0 0 0 1px rgba(251,191,36,.16);
+    }
+    tr[data-status="no"] .mark-card{
+      background: rgba(251,113,133,.12);
+      border-color: rgba(251,113,133,.22);
+      box-shadow: inset 0 0 0 1px rgba(251,113,133,.16);
+    }
+    tr[data-status="have"] .mark-card{
+      background: rgba(52,211,153,.12);
+      border-color: rgba(52,211,153,.22);
+      box-shadow: inset 0 0 0 1px rgba(52,211,153,.16);
+    }
+
+    tr[data-status="possible"] .status-select{ border-color: rgba(96,165,250,.35); background: rgba(96,165,250,.12); }
+    tr[data-status="suspect"]  .status-select{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); }
+    tr[data-status="no"]       .status-select{ border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.12); }
+    tr[data-status="have"]     .status-select{ border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.12); }
+
+    /* Mobile: fonte um pouco menor pra caber bem */
+    @media (max-width: 520px){
+      .status-select{ font-size:13px; }
+      thead th{ font-size:11px; }
+      tbody td{ padding:10px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Detetive</h1>
+  </header>
+
+  <main id="app"></main>
+
+  <script>
+    // ======== DADOS ========
+    const DATA = [
+      {
+        title: "Suspeitos",
+        note: "Personagens",
+        items: [
+          { name: "Sargento Bigode", meta: "peão amarelo" },
+          { name: "Florista Dona Branca", meta: "peão branco" },
+          { name: "Chef Tony Gourmet", meta: "peão marrom" },
+          { name: "Mordomo James", meta: "peão azul" },
+          { name: "Médica Dona Violeta", meta: "peão rosa" },
+          { name: "Dançarina Sra. Rosa", meta: "peão vermelho" },
+          { name: "Coveiro Sérgio Soturno", meta: "peão preto" },
+          { name: "Advogado Sr. Marinho", meta: "peão verde" },
+        ],
+      },
+      {
+        title: "Armas",
+        note: "Objetos",
+        items: [
+          { name: "Espingarda" },
+          { name: "Pá" },
+          { name: "Pé-de-cabra" },
+          { name: "Tesoura" },
+          { name: "Arma química" },
+          { name: "Veneno" },
+          { name: "Soco inglês" },
+          { name: "Faca" },
+        ],
+      },
+      {
+        title: "Locais",
+        note: "Onde foi",
+        items: [
+          { name: "Prefeitura" },
+          { name: "Restaurante" },
+          { name: "Floricultura" },
+          { name: "Boate" },
+          { name: "Hospital" },
+          { name: "Mansão" },
+          { name: "Cemitério" },
+          { name: "Praça" },
+          { name: "Hotel" },
+          { name: "Banco" },
+          { name: "Estação de trem" },
+        ],
+      },
+    ];
+
+    // ======== OPÇÕES ========
+    const OPTIONS = [
+      { value: "possible", label: "Possível" },
+      { value: "suspect",  label: "Suspeito" },
+      { value: "no",       label: "Não é" },
+      { value: "have",     label: "Tenho a carta" },
+    ];
+
+    const STORAGE_KEY = "detetive-form-v5-autosave-select";
+
+    // ======== RENDER ========
+    const app = document.getElementById("app");
+    const statusEl = document.getElementById("status");
+    const dotEl = document.getElementById("dot");
+
+    function keyOf(sectionTitle, itemName){
+      return `${sectionTitle}::${itemName}`;
+    }
+
+    // ======== ESTADO ========
+    let state = {};
+
+    function load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        state = raw ? JSON.parse(raw) : {};
+      }catch(e){
+        console.error(e);
+        state = {};
+      }
+    }
+
+    let saveTimer = null;
+    function autosaveSoon(){
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        try{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          setStatus("Salvo automaticamente ✅");
+        }catch(e){
+          console.error(e);
+          setStatus("Não foi possível salvar (armazenamento indisponível)");
+        }
+      }, 250);
+    }
+
+    function setStatus(msg){
+      statusEl.textContent = msg;
+      dotEl.classList.add("on");
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(() => dotEl.classList.remove("on"), 700);
+    }
+
+    function render(){
+      app.innerHTML = "";
+
+      DATA.forEach((section, sIdx) => {
+        const card = document.createElement("section");
+        card.className = "card";
+
+        const head = document.createElement("div");
+        head.className = "card-head";
+        head.innerHTML = `
+          <div>
+            <h2>${section.title}</h2>
+            <div class="small">${section.note ?? ""}</div>
+          </div>
+          <div class="small">Escolha 1 opção por item</div>
+        `;
+
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th style="width:34%">Item</th>
+              <th>Marcação</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector("tbody");
+
+        section.items.forEach((item, iIdx) => {
+          const tr = document.createElement("tr");
+
+          const tdItem = document.createElement("td");
+          tdItem.innerHTML = `
+            <span class="item">${item.name}</span>
+            ${item.meta ? `<span class="muted">${item.meta}</span>` : ""}
+          `;
+
+          const tdChoices = document.createElement("td");
+          tdChoices.className = "mark-cell";
+
+          const markCard = document.createElement("div");
+          markCard.className = "mark-card";
+
+          const wrap = document.createElement("div");
+          wrap.className = "select-wrap";
+
+          const select = document.createElement("select");
+          select.className = "status-select";
+          select.innerHTML = `
+            <option value="">Selecione...</option>
+            ${OPTIONS.map(o => `<option value="${o.value}">${o.label}</option>`).join("")}
+          `;
+
+          const k = keyOf(section.title, item.name);
+          const savedVal = state[k] || "";
+          select.value = savedVal;
+
+          if(savedVal) tr.dataset.status = savedVal;
+
+          select.addEventListener("change", () => {
+            const val = select.value || "";
+            state[k] = val;
+
+            if(val) tr.dataset.status = val;
+            else delete tr.dataset.status;
+
+            autosaveSoon();
+            setStatus("Salvando…");
+          });
+
+          wrap.appendChild(select);
+          markCard.appendChild(wrap);
+          tdChoices.appendChild(markCard);
+
+          tr.appendChild(tdItem);
+          tr.appendChild(tdChoices);
+          tbody.appendChild(tr);
+        });
+
+        card.appendChild(head);
+        card.appendChild(table);
+        app.appendChild(card);
+      });
+    }
+
+    // ======== INICIAR ========
+    load();
+    render();
+    setStatus(Object.keys(state).length ? "Carregado ✅ (auto-salvamento ativo)" : "Auto-salvamento ativo");
+  </script>
+</body>
+</html>
