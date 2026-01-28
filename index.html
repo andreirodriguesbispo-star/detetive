@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Detetive</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --muted:#a9b1c7;
+      --text:#eef2ff;
+      --line:rgba(255,255,255,.12);
+
+      --possible:#60a5fa; /* azul */
+      --suspect:#fbbf24;  /* amarelo */
+      --no:#fb7185;       /* vermelho */
+      --have:#34d399;     /* verde */
+
+      --killer:#a78bfa;   /* roxo (Assassino) */
+      --crimew:#a78bfa;   /* laranja (Arma do crime) */
+      --crimep:#a78bfa;   /* verde vivo (Local do crime) */
+
+      --radius:16px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background-color:#000;
+      color:var(--text);
+    }
+
+    header{
+      padding:22px 16px 10px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .title-wrap h1{
+      margin:0 0 6px;
+      font-size:clamp(20px, 2.4vw, 30px);
+      letter-spacing:.3px;
+    }
+    p.sub{
+      margin:0;
+      color:var(--muted);
+      line-height:1.5;
+      font-size:14px;
+    }
+
+    .actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .autosave{
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: rgba(255,255,255,.04);
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:rgba(255,255,255,.18);
+      display:inline-block;
+    }
+    .dot.on{ background: var(--have); }
+
+    .btn{
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:999px;
+      font-weight:800;
+      font-size:13px;
+      letter-spacing:.2px;
+      cursor:pointer;
+      transition: transform .08s ease, background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+      user-select:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,.07);
+      border-color: rgba(255,255,255,.18);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn-danger{
+      border-color: rgba(251,113,133,.35);
+      background: rgba(251,113,133,.10);
+    }
+    .btn-danger:hover{
+      border-color: rgba(251,113,133,.55);
+      background: rgba(251,113,133,.14);
+    }
+
+    main{
+      max-width:1100px;
+      margin:0 auto;
+      padding:16px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      overflow:hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    .card-head{
+      padding:14px 14px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .card-head h2{
+      margin:0;
+      font-size:16px;
+      letter-spacing:.2px;
+    }
+    .card-head .small{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+    thead th{
+      text-align:left;
+      font-size:12px;
+      color:var(--muted);
+      font-weight:700;
+      padding:10px 14px;
+      border-bottom:1px solid var(--line);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      white-space:nowrap;
+    }
+    tbody td{
+      padding:12px 14px;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      vertical-align:middle;
+    }
+    tbody tr:last-child td{ border-bottom: none; }
+
+    .item{
+      font-weight:650;
+      letter-spacing:.2px;
+      font-size:12px;
+    }
+    .muted{
+      color:var(--muted);
+      font-weight:500;
+      font-size:12px;
+      display:block;
+      margin-top:2px;
+    }
+
+    .mark-cell{ padding:8px 10px !important; }
+    .mark-card{
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      padding: 8px 10px;
+      transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+
+    .select-wrap{
+      position:relative;
+      width:100%;
+    }
+    .select-wrap::after{
+      content:"▾";
+      position:absolute;
+      right:10px;
+      top:50%;
+      transform: translateY(-50%);
+      color: rgba(255,255,255,.85);
+      pointer-events:none;
+      font-size:12px;
+    }
+
+    .status-select{
+      width:100%;
+      padding:8px 30px 8px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(18,26,51,.72);
+      color: var(--text);
+      font-weight:800;
+      font-size:14px;
+      line-height:1.2;
+      outline:none;
+      cursor:pointer;
+      transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+    }
+    .status-select option{
+      background: var(--card);
+      color: var(--text);
+    }
+
+    /* ====== CORES POR STATUS ====== */
+    tr[data-status="possible"] .mark-card{
+      background: rgba(96,165,250,.12);
+      border-color: rgba(96,165,250,.22);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,.16);
+    }
+    tr[data-status="suspect"] .mark-card{
+      background: rgba(251,191,36,.12);
+      border-color: rgba(251,191,36,.22);
+      box-shadow: inset 0 0 0 1px rgba(251,191,36,.16);
+    }
+    tr[data-status="no"] .mark-card{
+      background: rgba(251,113,133,.12);
+      border-color: rgba(251,113,133,.22);
+      box-shadow: inset 0 0 0 1px rgba(251,113,133,.16);
+    }
+    tr[data-status="have"] .mark-card{
+      background: rgba(52,211,153,.12);
+      border-color: rgba(52,211,153,.22);
+      box-shadow: inset 0 0 0 1px rgba(52,211,153,.16);
+    }
+
+    /* especiais */
+    tr[data-status="killer"] .mark-card{
+      background: rgba(167,139,250,.14);
+      border-color: rgba(167,139,250,.28);
+      box-shadow: inset 0 0 0 1px rgba(167,139,250,.18);
+    }
+    tr[data-status="crime_weapon"] .mark-card{
+      background: rgba(167,139,250,.14);
+      border-color: rgba(167,139,250,.28);
+      box-shadow: inset 0 0 0 1px rgba(167,139,250,.18);
+    }
+    tr[data-status="crime_place"] .mark-card{
+      background: rgba(167,139,250,.14);
+      border-color: rgba(167,139,250,.28);
+      box-shadow: inset 0 0 0 1px rgba(167,139,250,.18);
+    }
+
+    tr[data-status="possible"] .status-select{ border-color: rgba(96,165,250,.35); background: rgba(96,165,250,.12); }
+    tr[data-status="suspect"]  .status-select{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); }
+    tr[data-status="no"]       .status-select{ border-color: rgba(251,113,133,.35); background: rgba(251,113,133,.12); }
+    tr[data-status="have"]     .status-select{ border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.12); }
+
+    tr[data-status="killer"] .status-select{
+      border-color: rgba(167,139,250,.55);
+      background: rgba(167,139,250,.16);
+      box-shadow: 0 0 0 3px rgba(167,139,250,.12);
+    }
+    tr[data-status="crime_weapon"] .status-select{
+      border-color: rgba(167,139,250,.55);
+      background: rgba(167,139,250,.16);
+      box-shadow: 0 0 0 3px rgba(167,139,250,.12);
+    }
+    tr[data-status="crime_place"] .status-select{
+      border-color: rgba(167,139,250,.55);
+      background: rgba(167,139,250,.16);
+      box-shadow: 0 0 0 3px rgba(167,139,250,.12);
+    }
+
+    @media (max-width: 520px){
+      .status-select{ font-size:13px; }
+      thead th{ font-size:11px; }
+      tbody td{ padding:10px 12px; }
+      .btn{ padding:10px 11px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>Detetive</h1>
+        <p class="sub">
+          Marque cada item e deixe salvo automaticamente.
+          <b>Assassino</b>, <b>Arma do crime</b> e <b>Local do crime</b> ficam <b>únicos</b> dentro da categoria.
+        </p>
+      </div>
+
+      <div class="actions">
+        <div class="autosave" title="Auto-salvamento">
+          <span class="dot" id="dot"></span>
+          <span id="status">Auto-salvamento ativo</span>
+        </div>
+
+        <button class="btn btn-danger" id="clearAll" type="button" title="Limpa todas as marcações">
+          Desmarcar tudo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app"></main>
+
+  <script>
+    // ======== DADOS ========
+    const DATA = [
+      {
+        title: "Suspeitos",
+        note: "Personagens",
+        items: [
+          { name: "Sargento Bigode", meta: "peão amarelo" },
+          { name: "Florista Dona Branca", meta: "peão branco" },
+          { name: "Chef Tony Gourmet", meta: "peão marrom" },
+          { name: "Mordomo James", meta: "peão azul" },
+          { name: "Médica Dona Violeta", meta: "peão rosa" },
+          { name: "Dançarina Sra. Rosa", meta: "peão vermelho" },
+          { name: "Coveiro Sérgio Soturno", meta: "peão preto" },
+          { name: "Advogado Sr. Marinho", meta: "peão verde" },
+        ],
+      },
+      {
+        title: "Armas",
+        note: "Objetos",
+        items: [
+          { name: "Espingarda" },
+          { name: "Pá" },
+          { name: "Pé-de-cabra" },
+          { name: "Tesoura" },
+          { name: "Arma química" },
+          { name: "Veneno" },
+          { name: "Soco inglês" },
+          { name: "Faca" },
+        ],
+      },
+      {
+        title: "Locais",
+        note: "Onde foi",
+        items: [
+          { name: "Prefeitura" },
+          { name: "Restaurante" },
+          { name: "Floricultura" },
+          { name: "Boate" },
+          { name: "Hospital" },
+          { name: "Mansão" },
+          { name: "Cemitério" },
+          { name: "Praça" },
+          { name: "Hotel" },
+          { name: "Banco" },
+          { name: "Estação de trem" },
+        ],
+      },
+    ];
+
+    // ======== OPÇÕES BASE ========
+    const BASE_OPTIONS = [
+      { value: "possible", label: "Possível" },
+      { value: "suspect",  label: "Suspeito" },
+      { value: "no",       label: "Não é" },
+      { value: "have",     label: "Tenho a carta" },
+    ];
+
+    // especiais por seção (só aparece onde faz sentido)
+    function getOptions(sectionTitle){
+      if(sectionTitle === "Suspeitos"){
+        return [...BASE_OPTIONS, { value: "killer", label: "Assassino" }];
+      }
+      if(sectionTitle === "Armas"){
+        return [...BASE_OPTIONS, { value: "crime_weapon", label: "Arma do crime" }];
+      }
+      if(sectionTitle === "Locais"){
+        return [...BASE_OPTIONS, { value: "crime_place", label: "Local do crime" }];
+      }
+      return BASE_OPTIONS;
+    }
+
+    // chave de storage
+    const STORAGE_KEY = "detetive-form-v7-autosave-select";
+
+    // ======== ELEMENTOS ========
+    const app = document.getElementById("app");
+    const statusEl = document.getElementById("status");
+    const dotEl = document.getElementById("dot");
+    const clearBtn = document.getElementById("clearAll");
+
+    function keyOf(sectionTitle, itemName){
+      return `${sectionTitle}::${itemName}`;
+    }
+    function sectionOfKey(k){
+      return (k.split("::")[0] || "").trim();
+    }
+
+    // ======== ESTADO ========
+    let state = {};
+    let selectByKey = {}; // pra atualizar selects ao forçar "único"
+
+    function load(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        state = raw ? JSON.parse(raw) : {};
+      }catch(e){
+        console.error(e);
+        state = {};
+      }
+    }
+
+    function saveNow(statusMsg = "Salvo automaticamente ✅"){
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        setStatus(statusMsg);
+      }catch(e){
+        console.error(e);
+        setStatus("Não foi possível salvar (armazenamento indisponível)");
+      }
+    }
+
+    let saveTimer = null;
+    function autosaveSoon(){
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveNow(), 250);
+    }
+
+    function setStatus(msg){
+      statusEl.textContent = msg;
+      dotEl.classList.add("on");
+      clearTimeout(setStatus._t);
+      setStatus._t = setTimeout(() => dotEl.classList.remove("on"), 700);
+    }
+
+    function clearAll(){
+      state = {};
+      Object.values(selectByKey).forEach(({ select, tr }) => {
+        select.value = "";
+        delete tr.dataset.status;
+      });
+      try{
+        localStorage.removeItem(STORAGE_KEY);
+      }catch(e){
+        console.error(e);
+      }
+      setStatus("Tudo desmarcado 🧼");
+    }
+
+    // garante que o "especial" seja único dentro da mesma seção
+    function enforceSingleSpecial(changedKey, specialValue){
+      const section = sectionOfKey(changedKey);
+
+      Object.entries(state).forEach(([k, v]) => {
+        if(k !== changedKey && v === specialValue && sectionOfKey(k) === section){
+          state[k] = "";
+          const entry = selectByKey[k];
+          if(entry){
+            entry.select.value = "";
+            delete entry.tr.dataset.status;
+          }
+        }
+      });
+    }
+
+    function render(){
+      app.innerHTML = "";
+      selectByKey = {};
+
+      DATA.forEach((section) => {
+        const card = document.createElement("section");
+        card.className = "card";
+
+        const head = document.createElement("div");
+        head.className = "card-head";
+        head.innerHTML = `
+          <div>
+            <h2>${section.title}</h2>
+            <div class="small">${section.note ?? ""}</div>
+          </div>
+          <div class="small">Escolha 1 opção por item</div>
+        `;
+
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th style="width:34%">Item</th>
+              <th>Marcação</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector("tbody");
+        const options = getOptions(section.title);
+
+        section.items.forEach((item) => {
+          const tr = document.createElement("tr");
+
+          const tdItem = document.createElement("td");
+          tdItem.innerHTML = `
+            <span class="item">${item.name}</span>
+            ${item.meta ? `<span class="muted">${item.meta}</span>` : ""}
+          `;
+
+          const tdChoices = document.createElement("td");
+          tdChoices.className = "mark-cell";
+
+          const markCard = document.createElement("div");
+          markCard.className = "mark-card";
+
+          const wrap = document.createElement("div");
+          wrap.className = "select-wrap";
+
+          const select = document.createElement("select");
+          select.className = "status-select";
+          select.innerHTML = `
+            <option value="">Selecione...</option>
+            ${options.map(o => `<option value="${o.value}">${o.label}</option>`).join("")}
+          `;
+
+          const k = keyOf(section.title, item.name);
+          const savedVal = state[k] || "";
+          select.value = savedVal;
+
+          if(savedVal) tr.dataset.status = savedVal;
+
+          selectByKey[k] = { select, tr };
+
+          select.addEventListener("change", () => {
+            const val = select.value || "";
+            state[k] = val;
+
+            if(val) tr.dataset.status = val;
+            else delete tr.dataset.status;
+
+            if(val === "killer" || val === "crime_weapon" || val === "crime_place"){
+              enforceSingleSpecial(k, val);
+            }
+
+            setStatus("Salvando…");
+            autosaveSoon();
+          });
+
+          wrap.appendChild(select);
+          markCard.appendChild(wrap);
+          tdChoices.appendChild(markCard);
+
+          tr.appendChild(tdItem);
+          tr.appendChild(tdChoices);
+          tbody.appendChild(tr);
+        });
+
+        card.appendChild(head);
+        card.appendChild(table);
+        app.appendChild(card);
+      });
+    }
+
+    // ======== EVENTOS ========
+    clearBtn.addEventListener("click", clearAll);
+
+    // ======== INICIAR ========
+    load();
+    render();
+    setStatus(Object.keys(state).length ? "Carregado  (auto-salvamento ativo)" : "Auto-salvamento ativo");
+  </script>
+</body>
+</html>
